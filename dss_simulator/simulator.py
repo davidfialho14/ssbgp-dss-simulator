@@ -1,6 +1,9 @@
 import logging
 import threading
+from contextlib import contextmanager
 from xmlrpc.client import ServerProxy
+
+from dss_simulator.dispatcher_proxy import DispatcherProxy
 
 
 class Simulator:
@@ -23,15 +26,15 @@ class Simulator:
     for a new simulation.
     """
 
-    logger = logging.getLogger('simulator')
+    _logger = logging.getLogger('simulator')
 
     def __init__(self, uuid_file: str, topologies_dir: str,
                  reports_dir: str, dispatcher_address):
         self._uuid_file = uuid_file
         self._topologies_dir = topologies_dir
         self._reports_dir = reports_dir
-        self._dispatcher = ServerProxy("http://%s:%d" % dispatcher_address,
-                                       allow_none=True)
+
+        self._dispatcher = DispatcherProxy(dispatcher_address)
         self._uuid = None
 
         self._to_stop = threading.Event()
@@ -44,16 +47,17 @@ class Simulator:
                 self._uuid = file.read()
 
         except FileNotFoundError:
-            self.logger.info("simulator is not registered yet")
-            self.logger.debug("registering")
+            self._logger.info("simulator is not registered yet")
+            self._logger.debug("registering")
 
             # Obtain UUID from dispatcher
             self._uuid = self._dispatcher.register()
+
             # Store the UUID on disk
             with open(self._uuid_file, "w") as file:
                 file.write(self._uuid)
 
-        self.logger.info("registered with UUID: %s" % self._uuid)
+        self._logger.info("registered with UUID: %s" % self._uuid)
 
         while not self._to_stop.is_set():
             self._run()
