@@ -47,13 +47,16 @@ def main():
 
     topologies_dir = os.path.join(install_dir, "topologies")
     reports_dir = os.path.join(install_dir, "reports")
+    logs_dir = os.path.join(install_dir, "logs")
     uuid_file = os.path.join(install_dir, "uuid.txt")
+    jar_file = os.path.join(install_dir, "ssbgp-simulator.jar")
 
     os.makedirs(topologies_dir, exist_ok=True)
     os.makedirs(reports_dir, exist_ok=True)
+    os.makedirs(logs_dir, exist_ok=True)
 
-    simulator = Simulator(uuid_file, topologies_dir, reports_dir,
-                          dispatcher_address=(address, port))
+    simulator = Simulator(jar_file, uuid_file, topologies_dir, reports_dir,
+                          logs_dir, dispatcher_address=(address, port))
 
     try:
         logger.info("connecting to %s:%d" % (address, port))

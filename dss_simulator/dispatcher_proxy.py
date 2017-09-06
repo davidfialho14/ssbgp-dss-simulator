@@ -2,6 +2,8 @@ import logging
 from time import sleep
 from xmlrpc.client import ServerProxy
 
+from dss_simulator.simulation import Simulation, simulation_with
+
 
 class DispatcherProxy:
     """ A proxy to access the dispatcher """
@@ -16,6 +18,16 @@ class DispatcherProxy:
 
     def register(self) -> str:
         return self._wait_connection(self._proxy.register)
+
+    def next_simulation(self, simulator_id: str) -> Simulation:
+        simulation = self._wait_connection(self._proxy.next_simulation,
+                                           simulator_id)
+
+        return simulation_with(**simulation) if simulation else None
+
+    def notify_finished(self, simulator_id: str, simulation_id: str):
+        self._wait_connection(self._proxy.notify_finished, simulator_id,
+                              simulation_id)
 
     def _wait_connection(self, method, *args):
         """
