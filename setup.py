@@ -1,8 +1,9 @@
 from setuptools import setup, find_packages
+from dss_simulator.__version__ import version
 
 setup(
     name='ssbgp-dss-simulator',
-    version='0.1',
+    version=version,
     description='Simulator component for SS-BGP distributed simulation system',
     url='https://github.com/davidfialho14/ssbgp-dss-simulator',
     license='MIT',
