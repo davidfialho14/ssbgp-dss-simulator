@@ -19,8 +19,8 @@ setup(
     },
 
     package_data={
-        'ssbgp-dss-simulator': [
-            'dss_simulator/logs.ini'
+        'dss_simulator': [
+            'logs.ini'
         ],
     },
 
