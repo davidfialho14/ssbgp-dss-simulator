@@ -17,4 +17,16 @@ setup(
     extras_require={
         'test': ['pytest'],
     },
+
+    package_data={
+        'ssbgp-dss-simulator': [
+            'dss_simulator/logs.ini'
+        ],
+    },
+
+    entry_points={
+        'console_scripts': [
+            'ssbgp-dss-simulator=dss_simulator.main:main',
+        ],
+    }
 )
