@@ -8,6 +8,7 @@ from subprocess import check_call, CalledProcessError
 import shutil
 
 from dss_simulator.dispatcher_proxy import DispatcherProxy
+from dss_simulator.simulation import Simulation
 
 
 class Simulator:
@@ -107,11 +108,26 @@ class Simulator:
         self._logger.info("running simulation %s" % simulation.id)
         self._logger.info(simulation)
 
+        # Path to log file for this simulation
+        log_path = os.path.join(self._logs_dir, simulation.id + '.log')
+
         # Directory where reports files are stored while the simulation is
         # being executed
         reports_running_dir = os.path.join(self._reports_running_dir,
                                            simulation.id)
-        makedir(reports_running_dir)
+
+        # The reports running directory must be completely clean before each
+        # execution. If this directory directory contains files from a
+        # previous simulation, that simulation is considered failed and the
+        # existing files are stored in the failed directory
+        try:
+            makedir(reports_running_dir, exist_ok=False)
+        except FileExistsError:
+            self._logger.warning("reports directory is not empty")
+            self._logger.warning("previous execution of simulation %s must "
+                                 "have failed" % simulation.id)
+
+            self._handle_failure(simulation, reports_running_dir, log_path)
 
         # Directory where the report files will be stored after the
         # simulation is finished
@@ -127,9 +143,6 @@ class Simulator:
             logging.warning("%s was already executed" % simulation.id)
             self._dispatcher.notify_finished(self._uuid, simulation.id)
             return
-
-        # Path to log file for this simulation
-        log_path = os.path.join(self._logs_dir, simulation.id + '.log')
 
         # Setup the arguments for the simulator
         args = [
@@ -156,37 +169,57 @@ class Simulator:
             self._dispatcher.notify_finished(self._uuid, simulation.id)
 
         except CalledProcessError:
+
             self._logger.error("simulator crashed while running %s" %
                                simulation.id)
 
-            # Current timestamp
-            timestamp = datetime.now().strftime("%y-%m-%d-%H-%M-%S")
-
-            # Rename the log file to include the timestamp
-            log_backup = os.path.join(self._logs_dir, '%s-%s.log' %
-                                      (simulation.id, timestamp))
-            os.rename(src=log_path, dst=log_backup)
-
-            self._logger.info("see more details in `%s`" % log_backup)
-
-            # Move reports to the failed directory
-            reports_failed_dir = os.path.join(self._reports_failed_dir,
-                                              simulation.id)
-            makedir(reports_failed_dir)
-
-            # A simulation may fail multiple times
-            # The report files from each failure are stored in a
-            # sub-directory with the name corresponding to the timestamp at
-            # which the failure occurred
-            reports_failed_dir = os.path.join(reports_failed_dir, timestamp)
-            os.rename(src=reports_running_dir, dst=reports_failed_dir)
-
-            self._logger.info("generated reports were saved to `%s`" %
-                              reports_failed_dir)
+            self._handle_failure(simulation, reports_running_dir, log_path)
 
             # Wait some time for the user to see the error message
             self._sleep(2)
             print()
+
+    def _handle_failure(self, simulation: Simulation, reports_dir: str,
+                        log_path: str):
+        """
+        Handles a potential failure.
+
+        It takes care of storing the report files in the appropriate directory
+        and to rename the log file to an appropriate name to ensure it is not
+        overridden.
+
+        :param simulation:      simulation that failed to execute
+        :param reports_dir:     directory containing the report files
+        :param log_path:        path to log file used for the simulation
+                                the cause of the failure
+        """
+        # Current timestamp
+        timestamp = datetime.now().strftime("%y-%m-%d-%H-%M-%S")
+
+        # Rename the log file to include the timestamp
+        log_backup = os.path.join(self._logs_dir, '%s-%s.log' %
+                                  (simulation.id, timestamp))
+        os.rename(src=log_path, dst=log_backup)
+
+        self._logger.info("log file was placed at `%s`" % log_backup)
+
+        # Move report file to the failed directory
+        reports_failed_dir = os.path.join(self._reports_failed_dir,
+                                          simulation.id)
+        makedir(reports_failed_dir)
+
+        # A simulation may fail multiple times
+        # The report files from each failure are stored in a
+        # sub-directory with the name corresponding to the timestamp at
+        # which the failure occurred
+        reports_failed_dir = os.path.join(reports_failed_dir, timestamp)
+        for filename in reports_dir:
+            os.rename(
+                src=os.path.join(reports_dir, filename),
+                dst=os.path.join(reports_failed_dir, filename)
+            )
+
+        self._logger.info("report files were saved to %s" % reports_failed_dir)
 
     def _sleep(self, timeout: float):
         self._to_stop.wait(timeout)
