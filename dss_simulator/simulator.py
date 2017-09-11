@@ -213,6 +213,7 @@ class Simulator:
         # sub-directory with the name corresponding to the timestamp at
         # which the failure occurred
         reports_failed_dir = os.path.join(reports_failed_dir, timestamp)
+        makedir(reports_failed_dir)
         for filename in os.listdir(reports_dir):
             os.rename(
                 src=os.path.join(reports_dir, filename),
