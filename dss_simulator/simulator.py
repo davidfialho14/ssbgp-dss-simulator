@@ -24,10 +24,7 @@ class Simulator:
 
     When a simulation fails for some reason the simulator logs the simulation
     that failed and re-executes the simulation. It tries to include as much
-    information as possible in the error log. The simulation is only
-    re-executed once. If the simulation fails a second time, then the
-    simulator asks the dispatcher to mark the simulation as failed and asks
-    for a new simulation.
+    information as possible in the error log.
     """
 
     _logger = logging.getLogger('simulator')
@@ -46,6 +43,21 @@ class Simulator:
         self._uuid = None
 
         self._to_stop = threading.Event()
+
+    @property
+    def _reports_running_dir(self):
+        """ Directory to place reports while a simulation is running """
+        return os.path.join(self._reports_dir, "running")
+
+    @property
+    def _reports_complete_dir(self):
+        """ Directory to place reports while a simulation finishes """
+        return os.path.join(self._reports_dir, "complete")
+
+    @property
+    def _reports_failed_dir(self):
+        """ Directory to place reports while a simulation fails """
+        return os.path.join(self._reports_dir, "failed")
 
     def run_forever(self):
         """ Runs the simulator forever """
@@ -67,6 +79,13 @@ class Simulator:
 
         self._logger.info("registered with UUID: %s" % self._uuid)
 
+        # Create storage structure
+        makedir(self._reports_dir)
+        makedir(self._reports_running_dir)
+        makedir(self._reports_complete_dir)
+        makedir(self._reports_failed_dir)
+        makedir(self._logs_dir)
+
         while not self._to_stop.is_set():
             self._run()
 
@@ -75,6 +94,7 @@ class Simulator:
         self._to_stop.set()
 
     def _run(self):
+        # Ask the dispatcher for a simulation o execute
         simulation = self._dispatcher.next_simulation(self._uuid)
 
         if simulation is None:
@@ -87,14 +107,35 @@ class Simulator:
         self._logger.info("running simulation %s" % simulation.id)
         self._logger.info(simulation)
 
-        report_dir = os.path.join(self._reports_dir, simulation.id)
-        os.makedirs(report_dir, exist_ok=True)
+        # Directory where reports files are stored while the simulation is
+        # being executed
+        reports_running_dir = os.path.join(self._reports_running_dir,
+                                           simulation.id)
+        makedir(reports_running_dir)
+
+        # Directory where the report files will be stored after the
+        # simulation is finished
+        reports_complete_dir = os.path.join(self._reports_complete_dir,
+                                            simulation.id)
+
+        # Check if the simulation was already executed
+        # We assume the simulation was already executed if the complete
+        # directory of this simulation already exists
+        if os.path.isdir(reports_complete_dir):
+            # This may happen if the simulation finished but the dispatcher
+            # was not notified
+            logging.warning("%s was already executed" % simulation.id)
+            self._dispatcher.notify_finished(self._uuid, simulation.id)
+            return
+
+        # Path to log file for this simulation
         log_path = os.path.join(self._logs_dir, simulation.id + '.log')
 
+        # Setup the arguments for the simulator
         args = [
             "java", "-jar", self._jar_file,
             "-t", os.path.join(self._topologies_dir, simulation.topology),
-            "-o", report_dir,
+            "-o", reports_running_dir,
             "-d", str(simulation.destination),
             "-c", str(simulation.repetitions),
             "-mindelay", str(simulation.min_delay),
@@ -104,9 +145,12 @@ class Simulator:
         ]
 
         try:
-            # Run the simulator to execute the simulation
+            # Run the simulator
             with open(log_path, "w") as log_file:
                 check_call(args, stdout=log_file, stderr=log_file)
+
+            # Move report files to the complete directory
+            os.rename(src=reports_running_dir, dst=reports_complete_dir)
 
             self._logger.info("finished simulation %s" % simulation.id)
             self._dispatcher.notify_finished(self._uuid, simulation.id)
@@ -115,32 +159,53 @@ class Simulator:
             self._logger.error("simulator crashed while running %s" %
                                simulation.id)
 
-            datetime_now = datetime.now().strftime("%y-%m-%d-%H-%M-%S")
+            # Current timestamp
+            timestamp = datetime.now().strftime("%y-%m-%d-%H-%M-%S")
 
-            # Rename the log file to include the current datetime in the name
+            # Rename the log file to include the timestamp
             log_backup = os.path.join(self._logs_dir, '%s-%s.log' %
-                                      (simulation.id, datetime_now))
+                                      (simulation.id, timestamp))
             os.rename(src=log_path, dst=log_backup)
 
             self._logger.info("see more details in `%s`" % log_backup)
 
-            # Move reports to an error directory inside the simulation's
-            # report directory
-            error_folder = "Fail-" + datetime_now
-            error_dir = os.path.join(report_dir, error_folder)
-            os.makedirs(error_dir)
-            for filename in os.listdir(report_dir):
-                # Ignore the error folders
-                if not filename.startswith("Fail-"):
-                    shutil.move(
-                        src=os.path.join(report_dir, filename),
-                        dst=os.path.join(error_dir, filename)
-                    )
-            self._logger.info("generated reports were saved to: %s" % error_dir)
+            # Move reports to the failed directory
+            reports_failed_dir = os.path.join(self._reports_failed_dir,
+                                              simulation.id)
+            makedir(reports_failed_dir)
 
-            # Wait some time for the user to see
+            # A simulation may fail multiple times
+            # The report files from each failure are stored in a
+            # sub-directory with the name corresponding to the timestamp at
+            # which the failure occurred
+            reports_failed_dir = os.path.join(reports_failed_dir, timestamp)
+            os.rename(src=reports_running_dir, dst=reports_failed_dir)
+
+            self._logger.info("generated reports were saved to `%s`" %
+                              reports_failed_dir)
+
+            # Wait some time for the user to see the error message
             self._sleep(2)
             print()
 
     def _sleep(self, timeout: float):
         self._to_stop.wait(timeout)
+
+
+def makedir(directory, exist_ok=True):
+    """
+    Create a directory named *directory*.
+
+    It works as the standard os.mkdir with the slight difference that if
+    *exist_ok* is True then it only creates the directory if the directory
+    does not already exist.
+
+    :param directory: path to the directory to create
+    :param exist_ok:  if True an error is not raised if the directory
+                      already exists.
+    """
+    if exist_ok:
+        if not os.path.isdir(directory):
+            os.mkdir(directory)
+    else:
+        os.mkdir(directory)
