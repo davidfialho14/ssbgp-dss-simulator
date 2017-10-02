@@ -5,8 +5,6 @@ import os
 from datetime import datetime
 from subprocess import check_call, CalledProcessError
 
-import shutil
-
 from dss_simulator.dispatcher_proxy import DispatcherProxy
 from dss_simulator.simulation import Simulation
 
@@ -156,6 +154,9 @@ class Simulator:
             "-th", str(simulation.threshold),
             "-stubs", os.path.join(self._topologies_dir, simulation.stubs_file)
         ]
+
+        if simulation.reportnodes:
+            args.append("-rn")
 
         try:
             # Run the simulator
