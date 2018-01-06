@@ -1,4 +1,5 @@
 import logging
+import socket
 from time import sleep
 from xmlrpc.client import ServerProxy
 
@@ -45,10 +46,19 @@ class DispatcherProxy:
         while True:
             try:
                 return method(*args)
+
+            except socket.gaierror:
+                self._logger.warning(f"failed to translate domain name for '{ip_address}'")
+                self._logger.info("internet connection may be down")
+                self._logger.info("domain name may be incorrect")
+
             except ConnectionError:
                 self._logger.warning("failed to connect to dispatcher")
-                self._logger.info("check if the address %s:%d is correct" %
-                                  self._address)
-                self._logger.info("will try to connect again in %d seconds" %
-                                  self._CONNECTION_WAIT_PERIOD)
-                sleep(self._CONNECTION_WAIT_PERIOD)
+                ip_address, port = self._address
+                self._logger.info(f"check if the address is correct: '{ip_address}:{port}'")
+
+            except OSError:
+                self._logger.warning("internet connection is down")
+
+            self._logger.info(f"will try to connect again in {self._CONNECTION_WAIT_PERIOD} seconds")
+            sleep(self._CONNECTION_WAIT_PERIOD)
