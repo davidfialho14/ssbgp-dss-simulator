@@ -92,15 +92,8 @@ class Simulator:
             clear_directory(self._running_dir)
 
         while not self._to_stop.is_set():
-            try:
-                # Ask the dispatcher for a simulation o execute
-                simulation = self._dispatcher.next_simulation(self._id)
-
-            except Fault:
-                # Faults are not expected to occur. If they do occur, then it is because there was
-                # an error with the dispatcher
-                logger.error("dispatcher error")
-                continue
+            # Ask the dispatcher for a simulation o execute
+            simulation = self._dispatcher.next_simulation(self._id)
 
             if simulation is None:
                 # The dispatcher had not simulations to be executed

@@ -1,7 +1,7 @@
 import logging
 import socket
 from time import sleep
-from xmlrpc.client import ServerProxy
+from xmlrpc.client import ServerProxy, Fault
 
 from dss_simulator.simulation import Simulation
 
@@ -43,6 +43,9 @@ class DispatcherProxy:
         while True:
             try:
                 return method(*args)
+
+            except Fault:
+                logger.error(f"error occurred at the dispatcher")
 
             except socket.gaierror:
                 ip_address, port = self._address
