@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from subprocess import check_call, CalledProcessError
 from typing import Tuple
+from xmlrpc.client import Fault
 
 from dss_simulator.dispatcher_proxy import DispatcherProxy
 from dss_simulator.simulation import Simulation
@@ -91,8 +92,15 @@ class Simulator:
             clear_directory(self._running_dir)
 
         while not self._to_stop.is_set():
-            # Ask the dispatcher for a simulation o execute
-            simulation = self._dispatcher.next_simulation(self._id)
+            try:
+                # Ask the dispatcher for a simulation o execute
+                simulation = self._dispatcher.next_simulation(self._id)
+
+            except Fault:
+                # Faults are not expected to occur. If they do occur, then it is because there was
+                # an error with the dispatcher
+                logger.error("dispatcher error")
+                continue
 
             if simulation is None:
                 # The dispatcher had not simulations to be executed
