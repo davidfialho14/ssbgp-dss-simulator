@@ -156,17 +156,16 @@ class Simulator:
             return
 
         # Setup the arguments for the simulator
-        # TODO update this arguments to support the simulator's new interface
         args = [
             "java", "-jar", self._jar_file,
-            "-t", os.path.join(self._topologies_dir, simulation.topology),
+            "-t", str(self._topologies_dir / simulation.topology),
             "-o", running_dir,
             "-d", str(simulation.destination),
             "-c", str(simulation.repetitions),
             "-mindelay", str(simulation.min_delay),
             "-maxdelay", str(simulation.max_delay),
             "-th", str(simulation.threshold),
-            "-stubs", os.path.join(self._topologies_dir, simulation.stubs_file)
+            "-stubs", str(self._topologies_dir / simulation.stubs_file)
         ]
 
         if simulation.enable_reportnodes:
@@ -193,22 +192,17 @@ class Simulator:
         except CalledProcessError:
             logger.error(f"simulator crashed while running {simulation.id}")
 
+            # Create 'failed' directory to contain incomplete data and log from this simulation
             error_timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
-            # Append timestamp to the log file to distinguish it from other log files from the
-            # same simulation
-            log_backup = log_path.with_name(f"{simulation.id}-{error_timestamp}.log")
-            log_path.rename(log_backup)
-
-            logger.info(f"log file was placed at '{str(log_backup)}'")
-
-            # Move simulation data to a failed directory
             failed_dir = self._failed_dir / f"{simulation.id}" / f"{error_timestamp}"
             failed_dir.mkdir(parents=True, exist_ok=True)
+
+            # Move simulation data and logs to a failed directory
+            log_path.rename(failed_dir / log_path.name)
             for path in running_dir.iterdir():
                 path.rename(failed_dir)
 
-            logger.info(f"incomplete data was stored in '{failed_dir}'")
+            logger.info(f"incomplete data and log file were stored in '{failed_dir}'")
 
             # Wait some time for the user to see the error message
             self._sleep(2)
