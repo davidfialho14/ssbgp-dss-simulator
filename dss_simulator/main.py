@@ -2,8 +2,8 @@
 SSBGP-DSS Simulator
 
 Usage:
-  ssbgp-dss-simulator <install_dir> [--addr=<dispatcher>] [--port=<dispatcher>]
-  ssbgp-dss-simulator (-h | --help)
+  dss-simulator <install_dir> [--addr=<dispatcher>] [--port=<dispatcher>]
+  dss-simulator (-h | --help)
 
 Options:
   -h --help            Show this screen.
@@ -16,54 +16,55 @@ import logging
 import os
 import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from docopt import docopt
-from pkg_resources import resource_filename, Requirement
+from pkg_resources import resource_filename
 
 from dss_simulator.__version__ import version
 from dss_simulator.simulator import Simulator
 
+logger = logging.getLogger('')
+
 
 def main():
-    # The input args can be parsed before setting up the loggers because the
-    # loggers are not used for it
     args = docopt(__doc__, version=version)
 
     # Setup the loggers
     logs_config = resource_filename(__name__, 'logs.ini')
     fileConfig(logs_config)
 
-    # Use root logger
-    logger = logging.getLogger('')
-
-    install_dir = args['<install_dir>']
-    if not os.path.isdir(install_dir):
-        logger.error("install directory does not exist: %s" % install_dir)
+    install_dir = Path(args['<install_dir>'])
+    if not install_dir.is_dir():
+        logger.error(f"install directory does not exist: {str(install_dir)}")
         sys.exit(1)
 
-    address = args['--addr']
-    port = int(args['--port'])
+    address = args['--addr'], int(args['--port'])
 
-    topologies_dir = os.path.join(install_dir, "topologies")
-    reports_dir = os.path.join(install_dir, "reports")
-    logs_dir = os.path.join(install_dir, "logs")
-    uuid_file = os.path.join(install_dir, "uuid.txt")
-    jar_file = os.path.join(install_dir, "ssbgp-simulator.jar")
+    jar_file = install_dir / "ssbgp-simulator.jar"
+    topologies_dir = install_dir / "topologies"
+    reports_dir = install_dir / "reports"
+    logs_dir = install_dir / "logs"
+    uuid_file = install_dir / "uuid.txt"
 
-    os.makedirs(topologies_dir, exist_ok=True)
-    os.makedirs(reports_dir, exist_ok=True)
-    os.makedirs(logs_dir, exist_ok=True)
+    # Create install structure
+    topologies_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir.mkdir(parents=True, exist_ok=True)
 
-    simulator = Simulator(jar_file, uuid_file, topologies_dir, reports_dir,
-                          logs_dir, dispatcher_address=(address, port))
+    # Check if the routing simulator is installed
+    if not jar_file.exists():
+        logger.error("routing simulator is not installed yet")
+        logger.info(f"expected to find '{jar_file.name}' inside the install directory")
+        sys.exit(2)
+
+    simulator = Simulator(jar_file, uuid_file, topologies_dir, reports_dir, logs_dir, address)
 
     try:
-        logger.info("connecting to %s:%d" % (address, port))
-        logger.info("running...")
+        logger.info("simulator running...")
         simulator.run_forever()
 
     except KeyboardInterrupt:
-        print()
         logger.info("shutting down the simulator...")
         simulator.shutdown()
         logger.info("shutdown successful")

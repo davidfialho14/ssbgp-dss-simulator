@@ -5,18 +5,12 @@ setup(
     name='ssbgp-dss-simulator',
     version=version,
     description='Simulator component for SS-BGP distributed simulation system',
-    url='https://github.com/davidfialho14/ssbgp-dss-simulator',
+    url='https://github.com/ssbgp/dss-simulator',
     license='MIT',
     author='David Fialho',
     author_email='fialho.david@protonmail.com',
 
     packages=find_packages(),
-
-    install_requires=[],
-
-    extras_require={
-        'test': ['pytest'],
-    },
 
     package_data={
         'dss_simulator': [
@@ -26,7 +20,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'ssbgp-dss-simulator=dss_simulator.main:main',
+            'dss-simulator=dss_simulator.main:main',
         ],
     }
 )
