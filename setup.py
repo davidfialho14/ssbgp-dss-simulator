@@ -12,12 +12,6 @@ setup(
 
     packages=find_packages(),
 
-    install_requires=[],
-
-    extras_require={
-        'test': ['pytest'],
-    },
-
     package_data={
         'dss_simulator': [
             'logs.ini'
