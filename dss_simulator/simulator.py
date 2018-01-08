@@ -135,8 +135,7 @@ class Simulator:
     def simulate(self, simulation: Simulation):
         """ Runs a *simulation* """
 
-        logger.info(f"running simulation {simulation.id}...")
-        logger.info(simulation)
+        logger.info(f"running simulation {simulation.id}... details: {simulation}")
 
         # Data from each simulation is stored in a sub-directory inside the complete directory.
         # The name of that sub-directory corresponds to the ID of that simulation.
