@@ -183,7 +183,7 @@ class Simulator:
 
             # Move data to complete directory
             for path in running_dir.iterdir():
-                path.rename(complete_dir)
+                path.rename(complete_dir / path.name)
 
             logger.info(f"data moved to '{str(complete_dir)}'")
 
@@ -200,7 +200,7 @@ class Simulator:
             # Move simulation data and logs to a failed directory
             log_path.rename(failed_dir / log_path.name)
             for path in running_dir.iterdir():
-                path.rename(failed_dir)
+                path.rename(failed_dir / path.name)
 
             logger.info(f"incomplete data and log file were stored in '{failed_dir}'")
 
