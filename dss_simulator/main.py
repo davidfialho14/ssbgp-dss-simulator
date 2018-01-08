@@ -2,8 +2,8 @@
 SSBGP-DSS Simulator
 
 Usage:
-  ssbgp-dss-simulator <install_dir> [--addr=<dispatcher>] [--port=<dispatcher>]
-  ssbgp-dss-simulator (-h | --help)
+  dss-simulator <install_dir> [--addr=<dispatcher>] [--port=<dispatcher>]
+  dss-simulator (-h | --help)
 
 Options:
   -h --help            Show this screen.

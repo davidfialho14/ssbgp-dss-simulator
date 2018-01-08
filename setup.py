@@ -26,7 +26,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'ssbgp-dss-simulator=dss_simulator.main:main',
+            'dss-simulator=dss_simulator.main:main',
         ],
     }
 )
