@@ -3,7 +3,6 @@ from typing import NamedTuple
 
 
 class Simulation(NamedTuple):
-    report_path: str
     topology: str
     destination: int
     repetitions: int
