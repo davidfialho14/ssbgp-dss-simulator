@@ -5,7 +5,7 @@ setup(
     name='ssbgp-dss-simulator',
     version=version,
     description='Simulator component for SS-BGP distributed simulation system',
-    url='https://github.com/davidfialho14/ssbgp-dss-simulator',
+    url='https://github.com/ssbgp/dss-simulator',
     license='MIT',
     author='David Fialho',
     author_email='fialho.david@protonmail.com',
